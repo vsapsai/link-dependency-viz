@@ -45,6 +45,10 @@ class SymbolTable:
     def file_for_symbol(self, symbol_name):
         return self._symbol_to_file_dict.get(symbol_name)
 
+def short_filename(file_path):
+    """Strips directory and extension from file path."""
+    return os.path.splitext(os.path.split(file_path)[1])[0]
+
 class DirectedGraph:
     def __init__(self):
         self._adjacency_matrix = collections.defaultdict(list)
@@ -64,10 +68,6 @@ class DirectedGraph:
             result[from_vertex] = collected_destinations
         return result
 
-    def _vertex_short_name(self, vertex):
-        "Strips directory and extension from file path."
-        return os.path.splitext(os.path.split(vertex)[1])[0]
-        
     def write_dot_file(self, filename):
         nice_adjacency_matrix = self._collect_same_destination_vertex()
         with open(filename, 'w') as f:
@@ -76,9 +76,7 @@ class DirectedGraph:
                 for to_vertex, edge_labels in destinations.iteritems():
                     f.write(" " * 4)
                     f.write("%s -> %s [label='%s'];\n" %
-                        (self._vertex_short_name(from_vertex),
-                        self._vertex_short_name(to_vertex),
-                        ", ".join(edge_labels)))
+                        (from_vertex, to_vertex, ", ".join(edge_labels)))
             f.write("}\n")
     
 def print_usage():
@@ -107,10 +105,11 @@ def main():
     # Find dependencies for undefined symbols.
     dependency_graph = DirectedGraph()
     for file, undefined in undefined_symbols:
+        short_file = short_filename(file)
         for symbol in undefined:
             defined_file = symbol_table.file_for_symbol(symbol)
             if defined_file is not None:
-                dependency_graph.add_edge_with_label(file, defined_file, symbol)
+                dependency_graph.add_edge_with_label(short_file, short_filename(defined_file), symbol)
     if not dependency_graph.is_empty():
         dependency_graph.write_dot_file("dependency.dot")
 
