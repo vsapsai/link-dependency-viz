@@ -63,6 +63,10 @@ class DirectedGraph:
                 collected_destinations[to_vertex].append(edge_label)
             result[from_vertex] = collected_destinations
         return result
+
+    def _vertex_short_name(self, vertex):
+        "Strips directory and extension from file path."
+        return os.path.splitext(os.path.split(vertex)[1])[0]
         
     def write_dot_file(self, filename):
         nice_adjacency_matrix = self._collect_same_destination_vertex()
@@ -71,7 +75,10 @@ class DirectedGraph:
             for from_vertex, destinations in nice_adjacency_matrix.iteritems():
                 for to_vertex, edge_labels in destinations.iteritems():
                     f.write(" " * 4)
-                    f.write("%s -> %s [label='%s'];\n" % (from_vertex, to_vertex, ", ".join(edge_labels)))
+                    f.write("%s -> %s [label='%s'];\n" %
+                        (self._vertex_short_name(from_vertex),
+                        self._vertex_short_name(to_vertex),
+                        ", ".join(edge_labels)))
             f.write("}\n")
     
 def print_usage():
