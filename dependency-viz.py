@@ -3,7 +3,7 @@
 import collections
 import re
 import subprocess
-import sys
+import os, sys
 
 DEFINED_SYMBOL_TYPE = 'S'
 UNDEFINED_SYMBOL_TYPE = 'U'
@@ -74,11 +74,24 @@ class DirectedGraph:
                     f.write("%s -> %s [label='%s'];\n" % (from_vertex, to_vertex, ", ".join(edge_labels)))
             f.write("}\n")
     
+def print_usage():
+    print """You must provide LINK_FILE_LIST_FILE
+Usage: dependency-viz LINK_FILE_LIST_FILE"""
+
+def get_files_to_process():
+    if len(sys.argv) != 2:
+        print_usage()
+        sys.exit(1)
+    linkFileListFilename = sys.argv[1]
+    with open(linkFileListFilename, "r") as f:
+        files_to_process = f.read().splitlines()
+    return files_to_process
+
 def main():
+    files_to_process = get_files_to_process()
     symbol_table = SymbolTable()
     undefined_symbols = []
     # Remember where each defined symbol is defined.
-    files_to_process = sys.argv[1:]
     for file in files_to_process:
         defined, undefined = global_symbols(file)
         for symbol in defined:
