@@ -49,6 +49,15 @@ def short_filename(file_path):
     """Strips directory and extension from file path."""
     return os.path.splitext(os.path.split(file_path)[1])[0]
 
+def readable_symbol_name(symbol_name):
+    """Strips known unreadable prefixes."""
+    prefixes = ('_OBJC_CLASS_$_', '_OBJC_METACLASS_$_')
+    for prefix in prefixes:
+        if symbol_name.startswith(prefix):
+            symbol_name = symbol_name[len(prefix):]
+            break  # Strip single prefix.
+    return symbol_name
+
 class DirectedGraph:
     def __init__(self):
         self._adjacency_matrix = collections.defaultdict(list)
@@ -62,9 +71,9 @@ class DirectedGraph:
     def _collect_same_destination_vertex(self):
         result = dict()
         for from_vertex, destinations in self._adjacency_matrix.iteritems():
-            collected_destinations = collections.defaultdict(list)
+            collected_destinations = collections.defaultdict(set)
             for to_vertex, edge_label in destinations:
-                collected_destinations[to_vertex].append(edge_label)
+                collected_destinations[to_vertex].add(edge_label)
             result[from_vertex] = collected_destinations
         return result
 
@@ -76,7 +85,7 @@ class DirectedGraph:
                 for to_vertex, edge_labels in destinations.iteritems():
                     f.write(" " * 4)
                     f.write("%s -> %s [label='%s'];\n" %
-                        (from_vertex, to_vertex, ", ".join(edge_labels)))
+                        (from_vertex, to_vertex, ", ".join(sorted(edge_labels))))
             f.write("}\n")
     
 def print_usage():
@@ -109,7 +118,8 @@ def main():
         for symbol in undefined:
             defined_file = symbol_table.file_for_symbol(symbol)
             if defined_file is not None:
-                dependency_graph.add_edge_with_label(short_file, short_filename(defined_file), symbol)
+                dependency_graph.add_edge_with_label(short_file,
+                    short_filename(defined_file), readable_symbol_name(symbol))
     if not dependency_graph.is_empty():
         dependency_graph.write_dot_file("dependency.dot")
 
