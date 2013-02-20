@@ -77,15 +77,17 @@ class DirectedGraph:
             result[from_vertex] = collected_destinations
         return result
 
-    def write_dot_file(self, filename):
+    def write_dot_file(self, filename, write_edge_labels=False):
         nice_adjacency_matrix = self._collect_same_destination_vertex()
         with open(filename, 'w') as f:
             f.write("digraph dependencies {\n")
             for from_vertex, destinations in nice_adjacency_matrix.iteritems():
                 for to_vertex, edge_labels in destinations.iteritems():
                     f.write(" " * 4)
-                    f.write("%s -> %s [label='%s'];\n" %
-                        (from_vertex, to_vertex, ", ".join(sorted(edge_labels))))
+                    f.write("%s -> %s" % (from_vertex, to_vertex))
+                    if write_edge_labels:
+                        f.write(" [label='%s']" % ", ".join(sorted(edge_labels)))
+                    f.write(";\n")
             f.write("}\n")
     
 def print_usage():
