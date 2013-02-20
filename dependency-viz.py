@@ -64,6 +64,9 @@ class DirectedGraph:
         
     def add_edge_with_label(self, from_vertex, to_vertex, edge_label):
         self._adjacency_matrix[from_vertex].append((to_vertex, edge_label))
+
+    def add_vertex(self, vertex):
+        self._adjacency_matrix[vertex] = []
         
     def is_empty(self):
         return len(self._adjacency_matrix) == 0
@@ -88,6 +91,10 @@ class DirectedGraph:
                     if write_edge_labels:
                         f.write(" [label='%s']" % ", ".join(sorted(edge_labels)))
                     f.write(";\n")
+                # Write vertex without outgoing nodes
+                if len(destinations) == 0:
+                    f.write(" " * 4)
+                    f.write("%s;\n" % from_vertex)
             f.write("}\n")
     
 def print_usage():
@@ -117,6 +124,7 @@ def main():
     dependency_graph = DirectedGraph()
     for file, undefined in undefined_symbols:
         short_file = short_filename(file)
+        dependency_graph.add_vertex(short_file)
         for symbol in undefined:
             defined_file = symbol_table.file_for_symbol(symbol)
             if defined_file is not None:
