@@ -135,3 +135,28 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# I have an idea to run dependency-viz from Python REPL, not as a standalone
+# command line tool.  It will reduce UI overhead.
+#
+# How I want to use dependency-visualizer (wishful thinking):
+# > dependencies = Dependencies(linkFileListFilename)
+# > dependencies.mark_files(unitTestLinkFileListFilename)
+#
+# -- write a graph
+# > dependencies.dump("dependency.dot", write_edge_labels, include_marked_files)
+# > dependencies.dump_subgraph("dependency.dot", vertexes, write_edge_labels, include_marked_files)
+#
+# -- trivial getters
+# > print dependencies.files()
+# > print dependencies.marked_files()
+#
+# -- what [transitive] dependencies should be satisfied to add file to tests
+# > print dependencies.required_dependencies(filename, cumulative|detailed)
+#
+# -- find which file is most needed
+# > print dependencies.provided_dependencies(filename, cumulative|detailed)
+# > dependencies.all_dependencies()  # returns filename with provided and required dependencies
+#
+# -- kinda cycle detection
+# > dependencies.strong_connected_components()
