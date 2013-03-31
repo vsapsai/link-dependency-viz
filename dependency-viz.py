@@ -96,7 +96,35 @@ class DirectedGraph:
                     f.write(" " * 4)
                     f.write("%s;\n" % from_vertex)
             f.write("}\n")
-    
+
+class Dependencies:
+    def __init__(self, link_file_list_filename):
+        with open(link_file_list_filename, "r") as f:
+            files_to_process = f.read().splitlines()
+        symbol_table = SymbolTable()
+        undefined_symbols = []
+        # Remember where each defined symbol is defined.
+        for file in files_to_process:
+            defined, undefined = global_symbols(file)
+            for symbol in defined:
+                symbol_table.add_defined_symbol_from_file(symbol, file)
+            undefined_symbols.append((file, undefined))
+        # Find dependencies for undefined symbols.
+        dependency_graph = DirectedGraph()
+        for file, undefined in undefined_symbols:
+            short_file = short_filename(file)
+            dependency_graph.add_vertex(short_file)
+            for symbol in undefined:
+                defined_file = symbol_table.file_for_symbol(symbol)
+                if defined_file is not None:
+                    dependency_graph.add_edge_with_label(short_file,
+                        short_filename(defined_file), readable_symbol_name(symbol))
+        self._dependency_graph = dependency_graph
+
+    def dump(self, filename, write_edge_labels=False, include_marked_files=False):
+        assert not self._dependency_graph.is_empty()
+        self._dependency_graph.write_dot_file(filename, write_edge_labels)
+
 def print_usage():
     print """You must provide LINK_FILE_LIST_FILE
 Usage: dependency-viz LINK_FILE_LIST_FILE"""
@@ -111,27 +139,12 @@ def get_files_to_process():
     return files_to_process
 
 def main():
-    files_to_process = get_files_to_process()
-    symbol_table = SymbolTable()
-    undefined_symbols = []
-    # Remember where each defined symbol is defined.
-    for file in files_to_process:
-        defined, undefined = global_symbols(file)
-        for symbol in defined:
-            symbol_table.add_defined_symbol_from_file(symbol, file)
-        undefined_symbols.append((file, undefined))
-    # Find dependencies for undefined symbols.
-    dependency_graph = DirectedGraph()
-    for file, undefined in undefined_symbols:
-        short_file = short_filename(file)
-        dependency_graph.add_vertex(short_file)
-        for symbol in undefined:
-            defined_file = symbol_table.file_for_symbol(symbol)
-            if defined_file is not None:
-                dependency_graph.add_edge_with_label(short_file,
-                    short_filename(defined_file), readable_symbol_name(symbol))
-    if not dependency_graph.is_empty():
-        dependency_graph.write_dot_file("dependency.dot")
+    if len(sys.argv) != 2:
+        print_usage()
+        sys.exit(1)
+    link_file_list_filename = sys.argv[1]
+    dependencies = Dependencies(link_file_list_filename)
+    dependencies.dump("dependency.dot")
 
 if __name__ == "__main__":
     main()
