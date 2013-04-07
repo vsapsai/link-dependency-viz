@@ -101,6 +101,18 @@ class DirectedGraph:
                     f.write("%s;\n" % from_vertex)
             f.write("}\n")
 
+    def subgraph(self, sub_vertexes):
+        result = DirectedGraph()
+        for from_vertex, destinations in self._adjacency_matrix.iteritems():
+            if from_vertex not in sub_vertexes:
+                continue
+            for to_vertex, edge_label in destinations:
+                if to_vertex in sub_vertexes:
+                    result.add_edge_with_label(from_vertex, to_vertex, edge_label)
+            if len(destinations) == 0:
+                result.add_vertex(from_vertex)
+        return result
+
 class Dependencies:
     def __init__(self, link_file_list_filename):
         with open(link_file_list_filename, "r") as f:
@@ -141,6 +153,11 @@ class Dependencies:
     def dump(self, filename, write_edge_labels=False, include_marked_files=False):
         assert not self._dependency_graph.is_empty()
         self._dependency_graph.write_dot_file(filename, write_edge_labels)
+
+    def dump_subgraph(self, filename, vertexes, write_edge_labels=False):
+        subgraph = self._dependency_graph.subgraph(vertexes)
+        assert not subgraph.is_empty()
+        subgraph.write_dot_file(filename, write_edge_labels)
 
 def print_usage():
     print """You must provide LINK_FILE_LIST_FILE
