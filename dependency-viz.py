@@ -70,6 +70,10 @@ class DirectedGraph:
         
     def is_empty(self):
         return len(self._adjacency_matrix) == 0
+
+    def vertexes(self):
+        """Returns all vertexes."""
+        return frozenset(self._adjacency_matrix.keys())
         
     def _collect_same_destination_vertex(self):
         result = dict()
@@ -120,6 +124,19 @@ class Dependencies:
                     dependency_graph.add_edge_with_label(short_file,
                         short_filename(defined_file), readable_symbol_name(symbol))
         self._dependency_graph = dependency_graph
+        self._marked_files = frozenset()
+
+    def mark_files(self, link_file_list_filename):
+        with open(link_file_list_filename, "r") as f:
+            files = f.read().splitlines()
+        files = [short_filename(f) for f in files]
+        self._marked_files = frozenset(files)
+
+    def files(self):
+        return self._dependency_graph.vertexes()
+
+    def marked_files(self):
+        return self._marked_files
 
     def dump(self, filename, write_edge_labels=False, include_marked_files=False):
         assert not self._dependency_graph.is_empty()
