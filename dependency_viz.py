@@ -113,6 +113,19 @@ class DirectedGraph:
                 result.add_vertex(from_vertex)
         return result
 
+    def _reachable_vertexes(self, from_vertex, visited, reachable):
+        visited.add(from_vertex)
+        for to_vertex, _ in self._adjacency_matrix[from_vertex]:
+            reachable.add(to_vertex)
+            if to_vertex not in visited:
+                self._reachable_vertexes(to_vertex, visited, reachable)
+
+    def reachable_vertexes(self, from_vertex):
+        reachable = set()
+        visited = set([from_vertex])
+        self._reachable_vertexes(from_vertex, visited, reachable)
+        return reachable
+
 class Dependencies:
     def __init__(self, link_file_list_filename):
         with open(link_file_list_filename, "r") as f:
@@ -158,6 +171,10 @@ class Dependencies:
         subgraph = self._dependency_graph.subgraph(vertexes)
         assert not subgraph.is_empty()
         subgraph.write_dot_file(filename, write_edge_labels)
+
+    def required_dependencies(filename):
+        filename = short_filename(filename)
+        return self._dependency_graph.reachable_vertexes(filename)
 
 def print_usage():
     print """You must provide LINK_FILE_LIST_FILE
