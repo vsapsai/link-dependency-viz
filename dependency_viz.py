@@ -181,7 +181,7 @@ class Dependencies:
         assert not subgraph.is_empty()
         subgraph.write_dot_file(filename, write_edge_labels)
 
-    def required_dependencies(filename):
+    def required_dependencies(self, filename):
         filename = short_filename(filename)
         return self._dependency_graph.reachable_vertexes(filename)
 
