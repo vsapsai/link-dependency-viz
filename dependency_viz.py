@@ -59,14 +59,34 @@ def readable_symbol_name(symbol_name):
     return symbol_name
 
 class DirectedGraph:
-    def __init__(self):
-        self._adjacency_matrix = collections.defaultdict(list)
-        
-    def add_edge_with_label(self, from_vertex, to_vertex, edge_label):
-        self._adjacency_matrix[from_vertex].append((to_vertex, edge_label))
+    class Builder:
+        def __init__(self):
+            self._edges = collections.defaultdict(list)
 
-    def add_vertex(self, vertex):
-        self._adjacency_matrix[vertex] = []
+        def add_edge_with_label(self, from_vertex, to_vertex, edge_label):
+            self._edges[from_vertex].append((to_vertex, edge_label))
+            self.add_vertex(to_vertex)
+
+        def add_edge_with_labels(self, from_vertex, to_vertex, edge_labels):
+            assert len(edge_labels) > 0
+            for label in edge_labels:
+                self.add_edge_with_label(from_vertex, to_vertex, label)
+
+        def add_vertex(self, vertex):
+            if vertex not in self._edges:
+                self._edges[vertex] = []
+
+        def build_graph(self):
+            adjacency_matrix = dict()
+            for from_vertex, destinations in self._edges.iteritems():
+                collected_destinations = collections.defaultdict(set)
+                for to_vertex, edge_label in destinations:
+                    collected_destinations[to_vertex].add(edge_label)
+                adjacency_matrix[from_vertex] = dict(collected_destinations)
+            return DirectedGraph(adjacency_matrix)
+
+    def __init__(self, adjacency_matrix):
+        self._adjacency_matrix = adjacency_matrix
         
     def is_empty(self):
         return len(self._adjacency_matrix) == 0
@@ -74,21 +94,11 @@ class DirectedGraph:
     def vertexes(self):
         """Returns all vertexes."""
         return frozenset(self._adjacency_matrix.keys())
-        
-    def _collect_same_destination_vertex(self):
-        result = dict()
-        for from_vertex, destinations in self._adjacency_matrix.iteritems():
-            collected_destinations = collections.defaultdict(set)
-            for to_vertex, edge_label in destinations:
-                collected_destinations[to_vertex].add(edge_label)
-            result[from_vertex] = collected_destinations
-        return result
 
     def write_dot_file(self, filename, write_edge_labels=False):
-        nice_adjacency_matrix = self._collect_same_destination_vertex()
         with open(filename, 'w') as f:
             f.write("digraph dependencies {\n")
-            for from_vertex, destinations in nice_adjacency_matrix.iteritems():
+            for from_vertex, destinations in self._adjacency_matrix.iteritems():
                 for to_vertex, edge_labels in destinations.iteritems():
                     f.write(" " * 4)
                     f.write("%s -> %s" % (from_vertex, to_vertex))
@@ -102,20 +112,19 @@ class DirectedGraph:
             f.write("}\n")
 
     def subgraph(self, sub_vertexes):
-        result = DirectedGraph()
+        builder = DirectedGraph.Builder()
         for from_vertex, destinations in self._adjacency_matrix.iteritems():
             if from_vertex not in sub_vertexes:
                 continue
-            for to_vertex, edge_label in destinations:
+            builder.add_vertex(from_vertex)
+            for to_vertex, edge_labels in destinations:
                 if to_vertex in sub_vertexes:
-                    result.add_edge_with_label(from_vertex, to_vertex, edge_label)
-            if len(destinations) == 0:
-                result.add_vertex(from_vertex)
-        return result
+                    builder.add_edge_with_labels(from_vertex, to_vertex, edge_labels)
+        return builder.build_graph()
 
     def _reachable_vertexes(self, from_vertex, visited, reachable):
         visited.add(from_vertex)
-        for to_vertex, _ in self._adjacency_matrix[from_vertex]:
+        for to_vertex in self._adjacency_matrix[from_vertex]:
             reachable.add(to_vertex)
             if to_vertex not in visited:
                 self._reachable_vertexes(to_vertex, visited, reachable)
@@ -139,16 +148,16 @@ class Dependencies:
                 symbol_table.add_defined_symbol_from_file(symbol, file)
             undefined_symbols.append((file, undefined))
         # Find dependencies for undefined symbols.
-        dependency_graph = DirectedGraph()
+        graph_builder = DirectedGraph.Builder()
         for file, undefined in undefined_symbols:
             short_file = short_filename(file)
-            dependency_graph.add_vertex(short_file)
+            graph_builder.add_vertex(short_file)
             for symbol in undefined:
                 defined_file = symbol_table.file_for_symbol(symbol)
                 if defined_file is not None:
-                    dependency_graph.add_edge_with_label(short_file,
+                    graph_builder.add_edge_with_label(short_file,
                         short_filename(defined_file), readable_symbol_name(symbol))
-        self._dependency_graph = dependency_graph
+        self._dependency_graph = graph_builder.build_graph()
         self._marked_files = frozenset()
 
     def mark_files(self, link_file_list_filename):
