@@ -126,23 +126,24 @@ class DirectedGraph:
         visited.add(from_vertex)
         reachable = dict()
         for to_vertex, edge_labels in self._adjacency_matrix[from_vertex].iteritems():
+            if to_vertex in visited:
+                continue
             new_path_item = PathItem(to_vertex, from_vertex, 1, edge_labels)
             current_path_item = reachable.get(to_vertex)
             if (current_path_item is None) or (new_path_item.distance < current_path_item.distance):
                 reachable[to_vertex] = new_path_item
-            if to_vertex not in visited:
-                transitive_reachable = self._reachable_vertexes(to_vertex, visited)
-                for reachable_vertex, reachable_path_item in transitive_reachable.iteritems():
-                    current_path_item = reachable.get(reachable_vertex)
-                    if (current_path_item is None) or (reachable_path_item.distance + 1 < current_path_item.distance):
-                        reachable[reachable_vertex] = PathItem(reachable_vertex,
-                            reachable_path_item.prev_vertex,
-                            reachable_path_item.distance + 1,
-                            reachable_path_item.edge_labels)
+            transitive_reachable = self._reachable_vertexes(to_vertex, visited)
+            for reachable_vertex, reachable_path_item in transitive_reachable.iteritems():
+                current_path_item = reachable.get(reachable_vertex)
+                if (current_path_item is None) or (reachable_path_item.distance + 1 < current_path_item.distance):
+                    reachable[reachable_vertex] = PathItem(reachable_vertex,
+                        reachable_path_item.prev_vertex,
+                        reachable_path_item.distance + 1,
+                        reachable_path_item.edge_labels)
         return reachable
 
     def reachable_vertexes(self, from_vertex):
-        visited = set([from_vertex])
+        visited = set()
         return self._reachable_vertexes(from_vertex, visited)
 
 class PathItem:
