@@ -122,18 +122,35 @@ class DirectedGraph:
                     builder.add_edge_with_labels(from_vertex, to_vertex, edge_labels)
         return builder.build_graph()
 
-    def _reachable_vertexes(self, from_vertex, visited, reachable):
+    def _reachable_vertexes(self, from_vertex, visited):
         visited.add(from_vertex)
-        for to_vertex in self._adjacency_matrix[from_vertex]:
-            reachable.add(to_vertex)
+        reachable = dict()
+        for to_vertex, edge_labels in self._adjacency_matrix[from_vertex].iteritems():
+            new_path_item = PathItem(to_vertex, from_vertex, 1, edge_labels)
+            current_path_item = reachable.get(to_vertex)
+            if (current_path_item is None) or (new_path_item.distance < current_path_item.distance):
+                reachable[to_vertex] = new_path_item
             if to_vertex not in visited:
-                self._reachable_vertexes(to_vertex, visited, reachable)
+                transitive_reachable = self._reachable_vertexes(to_vertex, visited)
+                for reachable_vertex, reachable_path_item in transitive_reachable.iteritems():
+                    current_path_item = reachable.get(reachable_vertex)
+                    if (current_path_item is None) or (reachable_path_item.distance + 1 < current_path_item.distance):
+                        reachable[reachable_vertex] = PathItem(reachable_vertex,
+                            reachable_path_item.prev_vertex,
+                            reachable_path_item.distance + 1,
+                            reachable_path_item.edge_labels)
+        return reachable
 
     def reachable_vertexes(self, from_vertex):
-        reachable = set()
         visited = set([from_vertex])
-        self._reachable_vertexes(from_vertex, visited, reachable)
-        return reachable
+        return self._reachable_vertexes(from_vertex, visited)
+
+class PathItem:
+    def __init__(self, vertex, prev_vertex, distance, edge_labels):
+        self.vertex = vertex
+        self.prev_vertex = prev_vertex
+        self.distance = distance
+        self.edge_labels = edge_labels
 
 class Dependencies:
     def __init__(self, link_file_list_filename):
@@ -181,7 +198,7 @@ class Dependencies:
         assert not subgraph.is_empty()
         subgraph.write_dot_file(filename, write_edge_labels)
 
-    def required_dependencies(self, filename):
+    def required_dependencies(self, filename, verbose=True):
         filename = short_filename(filename)
         return self._dependency_graph.reachable_vertexes(filename)
 
@@ -225,11 +242,12 @@ if __name__ == "__main__":
 # > print dependencies.marked_files()
 #
 # -- what [transitive] dependencies should be satisfied to add file to tests
-# > print dependencies.required_dependencies(filename, cumulative|detailed)
+# > print dependencies.required_dependencies(filename, verbose)
 #
 # -- find which file is most needed
-# > print dependencies.provided_dependencies(filename, cumulative|detailed)
+# > print dependencies.provided_dependencies(filename, verbose)
 # > dependencies.all_dependencies()  # returns filename with provided and required dependencies
+# > dependencies.files_connection(file1, file2)  # paths file1->file2, file2->file1
 #
 # -- kinda cycle detection
 # > dependencies.strong_connected_components()
