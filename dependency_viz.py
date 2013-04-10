@@ -153,6 +153,21 @@ class PathItem:
         self.distance = distance
         self.edge_labels = edge_labels
 
+    def __str__(self):
+        return "%d: %s -> %s" % (self.distance, self.prev_vertex, self.vertex)
+
+    def __eq__(self, other):
+        return ((self.vertex == other.vertex) and
+            (self.prev_vertex == other.prev_vertex) and
+            (self.distance == other.distance) and
+            (self.edge_labels == other.edge_labels))
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __hash__(self):
+        return hash(self.vertex) + hash(self.prev_vertex) + hash(self.distance) + hash(self.edge_labels)
+
 class Dependencies:
     def __init__(self, link_file_list_filename):
         with open(link_file_list_filename, "r") as f:
@@ -201,7 +216,8 @@ class Dependencies:
 
     def required_dependencies(self, filename, verbose=True):
         filename = short_filename(filename)
-        return self._dependency_graph.reachable_vertexes(filename)
+        reachable_vertexes = self._dependency_graph.reachable_vertexes(filename)
+        return reachable_vertexes if verbose else set(reachable_vertexes.keys())
 
 def print_usage():
     print """You must provide LINK_FILE_LIST_FILE
