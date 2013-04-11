@@ -232,6 +232,12 @@ class Dependencies:
         reachable_vertexes = self._dependency_graph.reachable_vertexes(filename)
         return reachable_vertexes if verbose else set(reachable_vertexes.keys())
 
+    def provided_dependencies(self, filename, verbose=True):
+        filename = short_filename(filename)
+        reversed_dependency_graph = self._dependency_graph.reversed_graph()
+        reachable_vertexes = reversed_dependency_graph.reachable_vertexes(filename)
+        return reachable_vertexes if verbose else set(reachable_vertexes.keys())
+
 def print_usage():
     print """You must provide LINK_FILE_LIST_FILE
 Usage: dependency-viz LINK_FILE_LIST_FILE"""
