@@ -181,6 +181,28 @@ class PathItem:
     def __hash__(self):
         return hash(self.vertex) + hash(self.prev_vertex) + hash(self.distance) + hash(self.edge_labels)
 
+class DependencyReport():
+    def __init__(self, filename, required_dependencies, provided_dependencies):
+        self._filename = filename
+        self._required_dependencies = required_dependencies
+        self._provided_dependencies = provided_dependencies
+
+    def required_dependencies(self):
+        return self._required_dependencies
+
+    def provided_dependencies(self):
+        return self._provided_dependencies
+
+    def required_dependencies_count(self):
+        return len(self._required_dependencies)
+
+    def provided_dependencies_count(self):
+        return len(self._provided_dependencies)
+
+    def longest_required_distance(self):
+        distances = [path_item.distance for path_item in self.required_dependencies().values()]
+        return max(distances)
+
 class Dependencies:
     def __init__(self, link_file_list_filename):
         with open(link_file_list_filename, "r") as f:
@@ -229,14 +251,28 @@ class Dependencies:
 
     def required_dependencies(self, filename, verbose=True):
         filename = short_filename(filename)
-        reachable_vertexes = self._dependency_graph.reachable_vertexes(filename)
-        return reachable_vertexes if verbose else set(reachable_vertexes.keys())
+        dependencies = self._all_dependencies_dict()[filename].required_dependencies()
+        return dependencies if verbose else set(dependencies.keys())
 
     def provided_dependencies(self, filename, verbose=True):
         filename = short_filename(filename)
-        reversed_dependency_graph = self._dependency_graph.reversed_graph()
-        reachable_vertexes = reversed_dependency_graph.reachable_vertexes(filename)
-        return reachable_vertexes if verbose else set(reachable_vertexes.keys())
+        dependencies = self._all_dependencies_dict()[filename].provided_dependencies()
+        return dependencies if verbose else set(dependencies.keys())
+
+    def _all_dependencies_dict(self):
+        if self._dependency_dict is None:
+            dependency_dict = {}
+            reversed_dependency_graph = self._dependency_graph.reversed_graph()
+            for filename in self.files():
+                required_dependencies = self._dependency_graph.reachable_vertexes(filename)
+                provided_dependencies = reversed_dependency_graph.reachable_vertexes(filename)
+                report = DependencyReport(filename, required_dependencies, provided_dependencies)
+                dependency_dict[filename] = report
+            self._dependency_dict = dependency_dict
+        return self._dependency_dict
+
+    def all_dependencies(self):
+        return self._all_dependencies_dict().values()
 
 def print_usage():
     print """You must provide LINK_FILE_LIST_FILE
