@@ -131,6 +131,7 @@ class DirectedGraph:
     def reversed_graph(self):
         builder = DirectedGraph.Builder()
         for from_vertex, destinations in self._adjacency_matrix.iteritems():
+            builder.add_vertex(from_vertex)
             for to_vertex, edge_labels in destinations.iteritems():
                 builder.add_edge_with_labels(to_vertex, from_vertex, edge_labels)
         return builder.build_graph()
@@ -227,6 +228,7 @@ class Dependencies:
                         short_filename(defined_file), readable_symbol_name(symbol))
         self._dependency_graph = graph_builder.build_graph()
         self._marked_files = frozenset()
+        self._dependency_dict = None
 
     def mark_files(self, link_file_list_filename):
         with open(link_file_list_filename, "r") as f:

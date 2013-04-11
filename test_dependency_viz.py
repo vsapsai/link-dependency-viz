@@ -71,5 +71,12 @@ class GraphStructure(unittest.TestCase):
 		expected_reversed = builder.build_graph()
 		self.assertEqual(actual_reversed, expected_reversed)
 
+	def test_reverse_separate_vertex(self):
+		builder = DirectedGraph.Builder()
+		builder.add_vertex("a")
+		g = builder.build_graph()
+		actual_reversed = g.reversed_graph()
+		self.assertEqual(actual_reversed, g)
+
 if __name__ == "__main__":
 	unittest.main()
