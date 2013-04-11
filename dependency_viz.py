@@ -87,6 +87,12 @@ class DirectedGraph:
 
     def __init__(self, adjacency_matrix):
         self._adjacency_matrix = adjacency_matrix
+
+    def __eq__(self, other):
+        return self._adjacency_matrix == other._adjacency_matrix
+
+    def __ne__(self, other):
+        return not (self == other)
         
     def is_empty(self):
         return len(self._adjacency_matrix) == 0
@@ -117,9 +123,16 @@ class DirectedGraph:
             if from_vertex not in sub_vertexes:
                 continue
             builder.add_vertex(from_vertex)
-            for to_vertex, edge_labels in destinations:
+            for to_vertex, edge_labels in destinations.iteritems():
                 if to_vertex in sub_vertexes:
                     builder.add_edge_with_labels(from_vertex, to_vertex, edge_labels)
+        return builder.build_graph()
+
+    def reversed_graph(self):
+        builder = DirectedGraph.Builder()
+        for from_vertex, destinations in self._adjacency_matrix.iteritems():
+            for to_vertex, edge_labels in destinations.iteritems():
+                builder.add_edge_with_labels(to_vertex, from_vertex, edge_labels)
         return builder.build_graph()
 
     def _reachable_vertexes(self, from_vertex, visited):
