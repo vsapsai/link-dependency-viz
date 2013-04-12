@@ -4,7 +4,7 @@ import collections
 import re
 import subprocess
 import os, sys
-from operator import methodcaller
+from operator import attrgetter, methodcaller
 
 DEFINED_SYMBOL_TYPE = 'S'
 UNDEFINED_SYMBOL_TYPE = 'U'
@@ -183,11 +183,19 @@ class PathItem:
     def __hash__(self):
         return hash(self.vertex) + hash(self.prev_vertex) + hash(self.distance) + hash(self.edge_labels)
 
+    def path_from_root(self, path_items_dict):
+        if self.distance == 1:
+            return [self]
+        return path_items_dict[self.prev_vertex].path_from_root(path_items_dict) + [self]
+
 class DependencyReport():
     def __init__(self, filename, required_dependencies, provided_dependencies):
         self._filename = filename
         self._required_dependencies = required_dependencies
         self._provided_dependencies = provided_dependencies
+
+    def filename(self):
+        return self._filename
 
     def required_dependencies(self):
         return self._required_dependencies
@@ -201,9 +209,17 @@ class DependencyReport():
     def provided_dependencies_count(self):
         return len(self._provided_dependencies)
 
+    def most_distant_required_dependency(self):
+        path_items = self.required_dependencies().values()
+        return max(path_items, key=attrgetter("distance")) if len(path_items) > 0 else None
+
     def longest_required_distance(self):
-        distances = [path_item.distance for path_item in self.required_dependencies().values()]
-        return max(distances) if len(distances) > 0 else 0
+        most_distant_dependency = self.most_distant_required_dependency()
+        return most_distant_dependency.distance if most_distant_dependency is not None else 0
+
+    def longest_required_path(self):
+        most_distant_dependency = self.most_distant_required_dependency()
+        return most_distant_dependency.path_from_root(self.required_dependencies()) if most_distant_dependency is not None else []
 
 class Dependencies:
     def __init__(self, link_file_list_filename):
@@ -276,6 +292,18 @@ class Dependencies:
 
     def all_dependencies(self):
         return self._all_dependencies_dict().values()
+
+    def files_connection(self, file1, file2):
+        file1 = short_filename(file1)
+        file2 = short_filename(file2)
+        result = []
+        direct_dependencies = self.required_dependencies(file1, verbose=True)
+        if file2 in direct_dependencies:
+            result.append(direct_dependencies[file2].path_from_root(direct_dependencies))
+        reverse_dependencies = self.required_dependencies(file2, verbose=True)
+        if file1 in reverse_dependencies:
+            result.append(reverse_dependencies[file1].path_from_root(reverse_dependencies))
+        return result
 
     # Convenience methods which provide answers for common questions.
 
@@ -352,3 +380,6 @@ if __name__ == "__main__":
 #
 # -- kinda cycle detection
 # > dependencies.strong_connected_components()
+
+# TODO:
+# - fix function symbols, because they are T _FunctionName, S _FunctionName.eh
