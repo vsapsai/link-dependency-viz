@@ -194,6 +194,9 @@ class DependencyReport():
         self._required_dependencies = required_dependencies
         self._provided_dependencies = provided_dependencies
 
+    def __str__(self):
+        return self.filename()
+
     def filename(self):
         return self._filename
 
@@ -245,7 +248,7 @@ class Dependencies:
                         short_filename(defined_file), readable_symbol_name(symbol))
         self._dependency_graph = graph_builder.build_graph()
         self._marked_files = frozenset()
-        self._dependency_dict = None
+        self._dependency_dicts = [None, None]
 
     def mark_files(self, link_file_list_filename):
         with open(link_file_list_filename, "r") as f:
@@ -259,7 +262,7 @@ class Dependencies:
     def marked_files(self):
         return self._marked_files
 
-    def dump(self, filename, write_edge_labels=False, include_marked_files=False):
+    def dump(self, filename, write_edge_labels=False):
         assert not self._dependency_graph.is_empty()
         self._dependency_graph.write_dot_file(filename, write_edge_labels)
 
@@ -268,65 +271,70 @@ class Dependencies:
         assert not subgraph.is_empty()
         subgraph.write_dot_file(filename, write_edge_labels)
 
-    def required_dependencies(self, filename, verbose=True):
+    def required_dependencies(self, filename, verbose=True, include_marked_files=True):
         filename = short_filename(filename)
         dependencies = self._all_dependencies_dict()[filename].required_dependencies()
         return dependencies if verbose else set(dependencies.keys())
 
-    def provided_dependencies(self, filename, verbose=True):
+    def provided_dependencies(self, filename, verbose=True, include_marked_files=True):
         filename = short_filename(filename)
         dependencies = self._all_dependencies_dict()[filename].provided_dependencies()
         return dependencies if verbose else set(dependencies.keys())
 
-    def _all_dependencies_dict(self):
-        if self._dependency_dict is None:
+    def _all_dependencies_dict(self, include_marked_files):
+        dict_index = 0 if include_marked_files else 1
+        if self._dependency_dicts[dict_index] is None:
             dependency_dict = {}
-            reversed_dependency_graph = self._dependency_graph.reversed_graph()
+            dependency_graph = self._dependency_graph
+            if not include_marked_files:
+                left_files = self.files() - self.marked_files()
+                dependency_graph = dependency_graph.subgraph(left_files)
+            reversed_dependency_graph = dependency_graph.reversed_graph()
             for filename in self.files():
-                required_dependencies = self._dependency_graph.reachable_vertexes(filename)
+                required_dependencies = dependency_graph.reachable_vertexes(filename)
                 provided_dependencies = reversed_dependency_graph.reachable_vertexes(filename)
                 report = DependencyReport(filename, required_dependencies, provided_dependencies)
                 dependency_dict[filename] = report
-            self._dependency_dict = dependency_dict
-        return self._dependency_dict
+            self._dependency_dicts[dict_index] = dependency_dict
+        return self._dependency_dicts[dict_index]
 
-    def all_dependencies(self):
-        return self._all_dependencies_dict().values()
+    def all_dependencies(self, include_marked_files=True):
+        return self._all_dependencies_dict(include_marked_files).values()
 
     def files_connection(self, file1, file2):
         file1 = short_filename(file1)
         file2 = short_filename(file2)
         result = []
-        direct_dependencies = self.required_dependencies(file1, verbose=True)
+        direct_dependencies = self.required_dependencies(file1, verbose=True, include_marked_files=True)
         if file2 in direct_dependencies:
             result.append(direct_dependencies[file2].path_from_root(direct_dependencies))
-        reverse_dependencies = self.required_dependencies(file2, verbose=True)
+        reverse_dependencies = self.required_dependencies(file2, verbose=True, include_marked_files=True)
         if file1 in reverse_dependencies:
             result.append(reverse_dependencies[file1].path_from_root(reverse_dependencies))
         return result
 
     # Convenience methods which provide answers for common questions.
 
-    def _top_files(self, criteria_method_name, count, descending=True):
+    def _top_files(self, criteria_method_name, count, include_marked_files=True, descending=True):
         result = self.all_dependencies()
         result.sort(key=methodcaller(criteria_method_name), reverse=descending)
         return result[:count]
 
     # Which file has most dependencies?
     def most_dependent_file(self, count=5):
-        return self._top_files("required_dependencies_count", count)
+        return self._top_files("required_dependencies_count", count, include_marked_files=True)
 
     # What is the longest chain of dependencies?
     def longest_dependency_chain(self, count=5):
-        return self._top_files("longest_required_distance", count)
+        return self._top_files("longest_required_distance", count, include_marked_files=True)
 
     # What file is most needed?
     def most_used_file(self, count=5):
-        return self._top_files("provided_dependencies_count", count)
+        return self._top_files("provided_dependencies_count", count, include_marked_files=False)
 
     # What file is most needed among those without external dependencies?
     def most_used_independent_file(self, count=5):
-        independent_files = [report for report in self.all_dependencies()
+        independent_files = [report for report in self.all_dependencies(include_marked_files=False)
             if report.required_dependencies_count() == 0]
         independent_files.sort(key=methodcaller("provided_dependencies_count"), reverse=True)
         return independent_files[:count]
@@ -363,18 +371,18 @@ if __name__ == "__main__":
 # > dependencies.mark_files(unitTestLinkFileListFilename)
 #
 # -- write a graph
-# > dependencies.dump("dependency.dot", write_edge_labels, include_marked_files)
-# > dependencies.dump_subgraph("dependency.dot", vertexes, write_edge_labels, include_marked_files)
+# > dependencies.dump("dependency.dot", write_edge_labels)
+# > dependencies.dump_subgraph("dependency.dot", vertexes, write_edge_labels)
 #
 # -- trivial getters
 # > print dependencies.files()
 # > print dependencies.marked_files()
 #
 # -- what [transitive] dependencies should be satisfied to add file to tests
-# > print dependencies.required_dependencies(filename, verbose)
+# > print dependencies.required_dependencies(filename, verbose, include_marked_files)
 #
 # -- find which file is most needed
-# > print dependencies.provided_dependencies(filename, verbose)
+# > print dependencies.provided_dependencies(filename, verbose, include_marked_files)
 # > dependencies.all_dependencies()  # returns filename with provided and required dependencies
 # > dependencies.files_connection(file1, file2)  # paths file1->file2, file2->file1
 #
