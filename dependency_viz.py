@@ -4,6 +4,7 @@ import collections
 import re
 import subprocess
 import os, sys
+from operator import methodcaller
 
 DEFINED_SYMBOL_TYPE = 'S'
 UNDEFINED_SYMBOL_TYPE = 'U'
@@ -202,7 +203,7 @@ class DependencyReport():
 
     def longest_required_distance(self):
         distances = [path_item.distance for path_item in self.required_dependencies().values()]
-        return max(distances)
+        return max(distances) if len(distances) > 0 else 0
 
 class Dependencies:
     def __init__(self, link_file_list_filename):
@@ -275,6 +276,31 @@ class Dependencies:
 
     def all_dependencies(self):
         return self._all_dependencies_dict().values()
+
+    # Convenience methods which provide answers for common questions.
+
+    def _top_files(self, criteria_method_name, count, descending=True):
+        result = self.all_dependencies().sort(key=methodcaller(criteria_method_name), reverse=descending)
+        return result[:count]
+
+    # Which file has most dependencies?
+    def most_dependent_file(self, count=5):
+        return self._top_files("required_dependencies_count", count)
+
+    # What is the longest chain of dependencies?
+    def longest_dependency_chain(self, count=5):
+        return self._top_files("longest_required_distance", count)
+
+    # What file is most needed?
+    def most_used_file(self, count=5):
+        return self._top_files("provided_dependencies_count", count)
+
+    # What file is most needed among those without external dependencies?
+    def most_used_independent_file(self, count=5):
+        independent_files = [report for report in self.all_dependencies()
+            if report.required_dependencies_count() == 0]
+        independent_files.sort(key=methodcaller("provided_dependencies_count"), reverse=True)
+        return independent_files[:count]
 
 def print_usage():
     print """You must provide LINK_FILE_LIST_FILE
