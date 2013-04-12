@@ -280,7 +280,8 @@ class Dependencies:
     # Convenience methods which provide answers for common questions.
 
     def _top_files(self, criteria_method_name, count, descending=True):
-        result = self.all_dependencies().sort(key=methodcaller(criteria_method_name), reverse=descending)
+        result = self.all_dependencies()
+        result.sort(key=methodcaller(criteria_method_name), reverse=descending)
         return result[:count]
 
     # Which file has most dependencies?
