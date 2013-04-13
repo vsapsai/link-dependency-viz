@@ -272,12 +272,12 @@ class Dependencies:
 
     def required_dependencies(self, filename, verbose=True, include_marked_files=True):
         filename = short_filename(filename)
-        dependencies = self._all_dependencies_dict()[filename].required_dependencies()
+        dependencies = self._all_dependencies_dict(include_marked_files)[filename].required_dependencies()
         return dependencies if verbose else set(dependencies.keys())
 
     def provided_dependencies(self, filename, verbose=True, include_marked_files=True):
         filename = short_filename(filename)
-        dependencies = self._all_dependencies_dict()[filename].provided_dependencies()
+        dependencies = self._all_dependencies_dict(include_marked_files)[filename].provided_dependencies()
         return dependencies if verbose else set(dependencies.keys())
 
     def _all_dependencies_dict(self, include_marked_files):
