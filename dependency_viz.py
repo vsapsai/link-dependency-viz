@@ -243,9 +243,8 @@ class Dependencies:
             graph_builder.add_vertex(short_file)
             for symbol in undefined:
                 defined_file = symbol_table.file_for_symbol(symbol)
-                if defined_file is not None:
-                    graph_builder.add_edge_with_label(short_file,
-                        short_filename(defined_file), readable_symbol_name(symbol))
+                defined_file = short_filename(defined_file) if defined_file is not None else "<Undefined>"
+                graph_builder.add_edge_with_label(short_file, defined_file, readable_symbol_name(symbol))                    
         self._dependency_graph = graph_builder.build_graph()
         self._marked_files = frozenset()
         self._dependency_dicts = [None, None]
