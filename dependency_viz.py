@@ -224,6 +224,29 @@ class DependencyReport():
         most_distant_dependency = self.most_distant_required_dependency()
         return most_distant_dependency.path_from_root(self.required_dependencies()) if most_distant_dependency is not None else []
 
+    def print_layered_dependencies(self, dependencies):
+        print(self.filename())
+        while len(dependencies) > 0:
+            # Find closest dependencies.
+            closest_dependencies = []
+            for dependency in dependencies:
+                if len(closest_dependencies) == 0:
+                    closest_dependencies.append(dependency)
+                elif dependency.distance < closest_dependencies[0].distance:
+                    closest_dependencies = [dependency]
+                elif dependency.distance == closest_dependencies[0].distance:
+                    closest_dependencies.append(dependency)
+            assert len(closest_dependencies) > 0
+            # Print closest dependencies.
+            # TODO: group by prev_vertex
+            print(closest_dependencies[0].distance)
+            for dependency in closest_dependencies:
+                print("    %s <- %s [%s]" % (dependency.vertex, dependency.prev_vertex,
+                    ", ".join(sorted(dependency.edge_labels))))
+            # Remove closest dependencies from dependencies.
+            closest_filenames = set(dependency.vertex for dependency in closest_dependencies)
+            dependencies = [d for d in dependencies if d.vertex not in closest_filenames]
+
 class Dependencies:
     def __init__(self, link_file_list_filename):
         with open(link_file_list_filename, "r") as f:
@@ -384,6 +407,9 @@ if __name__ == "__main__":
 # > print dependencies.provided_dependencies(filename, verbose, include_marked_files)
 # > dependencies.all_dependencies()  # returns filename with provided and required dependencies
 # > dependencies.files_connection(file1, file2)  # paths file1->file2, file2->file1
+#
+# -- pretty print dependencies
+# > r.print_layered_dependencies(r.required_dependencies().values())
 #
 # -- kinda cycle detection
 # > dependencies.strong_connected_components()
