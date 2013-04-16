@@ -248,6 +248,8 @@ class DependencyReport():
             dependencies = [d for d in dependencies if d.vertex not in closest_filenames]
 
 class Dependencies:
+    _UNDEFINED_FILE = "<Undefined>"
+
     def __init__(self, link_file_list_filename):
         with open(link_file_list_filename, "r") as f:
             files_to_process = f.read().splitlines()
@@ -266,16 +268,17 @@ class Dependencies:
             graph_builder.add_vertex(short_file)
             for symbol in undefined:
                 defined_file = symbol_table.file_for_symbol(symbol)
-                defined_file = short_filename(defined_file) if defined_file is not None else "<Undefined>"
+                defined_file = short_filename(defined_file) if defined_file is not None else Dependencies._UNDEFINED_FILE
                 graph_builder.add_edge_with_label(short_file, defined_file, readable_symbol_name(symbol))                    
         self._dependency_graph = graph_builder.build_graph()
-        self._marked_files = frozenset()
+        self._marked_files = frozenset([Dependencies._UNDEFINED_FILE])
         self._dependency_dicts = [None, None]
 
     def mark_files(self, link_file_list_filename):
         with open(link_file_list_filename, "r") as f:
             files = f.read().splitlines()
         files = [short_filename(f) for f in files]
+        files.append(Dependencies._UNDEFINED_FILE)
         self._marked_files = frozenset(files)
 
     def files(self):
