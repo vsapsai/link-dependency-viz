@@ -312,7 +312,7 @@ class Dependencies:
                 left_files = self.files() - self.marked_files()
                 dependency_graph = dependency_graph.subgraph(left_files)
             reversed_dependency_graph = dependency_graph.reversed_graph()
-            for filename in self.files():
+            for filename in dependency_graph.vertexes():
                 required_dependencies = dependency_graph.reachable_vertexes(filename)
                 provided_dependencies = reversed_dependency_graph.reachable_vertexes(filename)
                 report = DependencyReport(filename, required_dependencies, provided_dependencies)
